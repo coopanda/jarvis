@@ -8,3 +8,24 @@
 @media(max-width:1050px){.workspace{grid-template-columns:1fr 1fr}.conversation{grid-column:span 1}.panel{padding:15px}.panel-head .micro-label{display:none}.hero{padding:25px 0}.hero-copy>p{font-size:12px}.hubbar b{font-size:8px}.top-right time{display:none}.audit-row{grid-template-columns:75px 130px 85px 1fr}}
 @media(max-width:650px){.topbar{height:72px;padding:0 18px}.brand{font-size:15px;letter-spacing:.18em}.brand small{font-size:5px}.brand-mark{width:29px;height:32px;font-size:18px}.top-right{gap:6px}.top-right #connection,.online-dot{display:none}.danger{font-size:8px;padding:9px}.hero{grid-template-columns:1fr;gap:12px;padding:28px 6px 16px}.hero h1{font-size:38px;margin:12px 0}.hero-copy>p{margin:8px 0}.hero-copy br{display:none}.hero-tags{font-size:7px;gap:10px}.reactor{width:215px;height:215px}.reactor-cross{transform-origin:center 91px}.reactor-zone{padding:15px 0}.hubbar{grid-template-columns:repeat(3,1fr)}.workspace{display:flex;flex-direction:column}.panel{width:100%;resize:vertical;min-width:0;max-height:1000px}.conversation{order:0}.messages{height:220px}.audit-row{grid-template-columns:65px 1fr 80px}.audit-row p{grid-column:1/-1}.voice-options select{width:120px}main{padding:0 16px}footer span:nth-child(2){display:none}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;scroll-behavior:auto!important;transition:none!important}}
+/* Reference reactor: fixed red/gold armor; only the energy field animates.
+   Existing app.js data-state hooks and responsive dimensions stay intact. */
+.reactor,.reactor:hover{background:transparent url('/arc-reactor.svg') center/contain no-repeat;overflow:visible;filter:none;touch-action:manipulation}
+.reactor[data-state]{filter:none}
+.reactor > :not(.sr-only){display:none}
+.reactor::before,.reactor::after{content:'';position:absolute;pointer-events:none;border-radius:50%;transform-origin:center;will-change:transform,opacity}
+.reactor::before{inset:-17%;z-index:-1;background:radial-gradient(circle,rgba(36,207,255,.24) 0%,rgba(0,147,236,.13) 34%,rgba(0,111,199,.07) 49%,transparent 69%);box-shadow:none;border:1px solid transparent;animation:arc-atmosphere 4s ease-in-out infinite}
+.reactor::after{inset:36.5%;z-index:1;background:radial-gradient(circle,rgba(255,255,255,.35) 0%,rgba(201,255,255,.22) 57%,rgba(53,231,255,.13) 76%,transparent 100%);box-shadow:0 0 20px 8px rgba(0,205,255,.25),0 0 42px 14px rgba(0,142,255,.17);animation:arc-idle 4s ease-in-out infinite}
+.reactor[data-state=listening]::before{animation:arc-listening 1.15s ease-in-out infinite;background:radial-gradient(circle,rgba(67,232,255,.4),rgba(0,174,255,.2) 39%,transparent 69%)}
+.reactor[data-state=listening]::after{animation:arc-surge .85s ease-in-out infinite}
+.reactor[data-state=speaking]::before{inset:-9%;border-color:rgba(87,233,255,.45);box-shadow:0 0 20px rgba(0,191,255,.2),inset 0 0 20px rgba(0,191,255,.14);animation:arc-speak-wave 1.35s ease-out infinite}
+.reactor[data-state=speaking]::after{animation:arc-surge .55s ease-in-out infinite}
+.reactor[data-state=thinking]::before{animation:arc-listening 1.9s ease-in-out infinite}
+.reactor[data-state=thinking]::after{animation:arc-idle 1.9s ease-in-out infinite}
+.reactor[data-state=stopped]::before,.reactor[data-state=stopped]::after{animation:none;opacity:.22}
+@keyframes arc-atmosphere{0%,100%{opacity:.65;transform:scale(.97)}50%{opacity:1;transform:scale(1.035)}}
+@keyframes arc-idle{0%,100%{opacity:.55;transform:scale(.98)}50%{opacity:.95;transform:scale(1.025)}}
+@keyframes arc-listening{0%,100%{opacity:.65;transform:scale(.97)}50%{opacity:1;transform:scale(1.09)}}
+@keyframes arc-surge{0%,100%{opacity:.58;transform:scale(.98)}50%{opacity:1;transform:scale(1.085)}}
+@keyframes arc-speak-wave{0%{opacity:.85;transform:scale(.86)}80%,100%{opacity:0;transform:scale(1.28)}}
+@media(prefers-reduced-motion:reduce){.reactor::before,.reactor::after{animation:none!important;transform:none!important;opacity:.8;will-change:auto}}
