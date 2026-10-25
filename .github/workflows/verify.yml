@@ -1,0 +1,23 @@
+name: Verify Jarvis
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: find . -path './.git' -prune -o -name '*.js' -type f -print0 | xargs -0 -n 1 node --check
+      - name: Unit, permission guards and startup
+        run: node --test tests/*.test.js
