@@ -27,7 +27,7 @@ export function createIntegrationSuite({env,brain,files,write,audit,validateURL,
   const load=()=>{const f=files()[STATE];if(!f)return {schema:1,tasks:[],lessons:[],shortcuts:[],jobs:[]};let s;try{s=JSON.parse(f.content);}catch{throw fail('Integration memory is corrupt; restore a reviewed version.',503);}if(s.schema!==1||!['tasks','lessons','shortcuts','jobs'].every(k=>Array.isArray(s[k])))throw fail('Unsupported integration memory schema.',503);return s;};
   const update=fn=>{const run=tail.then(async()=>{const s=load(),result=await fn(s);await write(STATE,JSON.stringify(s,null,2),files()[STATE]?.version||0);return result;});tail=run.catch(()=>{});return run;};
   const connectors=()=>({
-    omniRoute:{implementation:'first-party provider router',availableModels:Object.keys(models).filter(k=>env[models[k]]),fallback:'explicit opt-in only'},
+    omniRoute:{implementation:'first-party provider router',availableModels:Object.keys(models).filter(k=>env[models[k]]),defaultModel:Object.keys(models).find(k=>env[models[k]]),missingEnvironment:Object.values(models).filter((v,i,a)=>a.indexOf(v)===i&&!env[v]),fallback:'Unconfigured selection auto-routes; provider failure fallback requires explicit opt-in'},
     claudeMem:{implementation:'workspace memory',durable:isDurable(),warning:isDurable()?null:'Ephemeral storage is not restart-durable.'},
     headroom:{implementation:'extractive context packing',tokenizer:'estimate only; truncation disclosed'},
     claudeCodeSetup:{implementation:'environment preflight; no shell execution'},
@@ -44,8 +44,8 @@ export function createIntegrationSuite({env,brain,files,write,audit,validateURL,
     background:{enabled:env.JARVIS_BACKGROUND_ENABLED==='true',durable:isDurable(),halted,policy:'Exact approved jobs only; unknown dispatches never automatically retried.'}
   });
   const generate=async(id,prompt,system,signal,allowFallback=false)=>{
-    const ids=Object.keys(models).filter(k=>env[models[k]]),chosen=id==='auto'?ids[0]:id;
-    if(!models[chosen]||!env[models[chosen]])throw fail('Selected model is not configured; no simulated output.',503);
+    const ids=Object.keys(models).filter(k=>env[models[k]]); if(id&&id!=='auto'&&!models[id])throw fail('Unknown model provider.',400); const preferred=env.JARVIS_DEFAULT_BRAIN,chosen=ids.includes(id)?id:ids.includes(preferred)?preferred:ids[0];
+    if(!chosen)throw fail('No AI provider configured. Add OPENAI_API_KEY in Render Environment (default model gpt-4o), or ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY or XAI_API_KEY. Save and redeploy, then enable AI / model API access in Permissions & Connections. No simulated reply was generated.',503);
     const packed=packContext(prompt,prompt.slice(0,1000),Number(env.JARVIS_CONTEXT_CHARS)||32000);
     const input=(packed.truncated?'[Context was extractively truncated; do not assume omitted facts.]\n':'')+packed.text;
     try{return {...await brain(chosen,input,system,signal),routing:{requested:id,used:chosen,fallback:false},context:packed};}
