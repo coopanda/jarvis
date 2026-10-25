@@ -52,7 +52,11 @@
     content.append(ownerAccessSection(),status,rows,actions,note);panel.append(title,content);document.body.append(panel);
     panel.addEventListener('toggle',()=>{if(panel.open)refresh().catch(()=>{});});
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.open){panel.open=false;title.focus();}});
-    document.addEventListener('click',e=>{if(panel.open&&!panel.contains(e.target))panel.open=false;});
+    document.addEventListener('click',e=>{
+      // A switch can synchronously render() and detach e.target before this runs.
+      // The original event path still includes the panel, even after rows change.
+      if(panel.open&&!e.composedPath().includes(panel))panel.open=false;
+    });
     refresh().catch(()=>{});setInterval(()=>{if(!busy)refresh().catch(()=>{});},15000);
   });
 })();
