@@ -1,4 +1,4 @@
-/* Fail-closed permissions. ON grants capability, never supplies credentials or approval. */
+/* Default-ON capabilities. ON never supplies credentials, browser consent or action approval. */
 export const PERMISSIONS = Object.freeze({
   ai:'AI / model connections', microphone:'Microphone / hands-free voice', voice:'Spoken replies / TTS',
   camera:'Camera observation', screen:'Screen observation', files:'Workspace / local files', photos:'Local photos',
@@ -16,8 +16,8 @@ export function createPermissions({files,write,isDurable=()=>false,onRevoke=asyn
     const f=files()[PATH];let s;
     if(f){try{s=JSON.parse(f.content);}catch{throw problem('Permission settings corrupt; all capabilities disabled.',503);}
       if(s.schema!==1||!object(s.toggles))throw problem('Unsupported permission settings; all capabilities disabled.',503);}
-    const toggles=Object.fromEntries(Object.keys(PERMISSIONS).map(k=>[k,s?.toggles[k]===true]));
-    return {schema:1,revision:f?.version||0,updatedAt:s?.updatedAt||null,toggles,labels:PERMISSIONS,durable:isDurable(),warning:isDurable()?null:'Settings use ephemeral storage: OFF after a fresh Render filesystem. Provision Redis or a persistent disk for restart durability.',connectionWarning:'ON is permission only, not a connected account. External actions still require exact approval.'};
+    const toggles=Object.fromEntries(Object.keys(PERMISSIONS).map(k=>[k,typeof s?.toggles[k]==='boolean'?s.toggles[k]:true]));
+    return {schema:1,revision:f?.version||0,updatedAt:s?.updatedAt||null,toggles,labels:PERMISSIONS,durable:isDurable(),warning:isDurable()?null:'Settings use ephemeral storage: permissions default ON after a fresh Render filesystem; saved OFF choices require Redis or a persistent disk for restart durability.',connectionWarning:'ON is permission only, not a connected account. External actions still require exact approval.'};
   }
   function requirePermission(key){if(!(key in PERMISSIONS)||read().toggles[key]!==true)throw problem('Permission OFF: '+key);}
   function tool(name){
