@@ -1,3 +1,48 @@
+/* Command-center controls share the existing consent-gated capture stream. */
+document.addEventListener('DOMContentLoaded', () => {
+  const mount = document.getElementById('permissions-mount');
+  const video = document.getElementById('vision-video');
+  if (!mount || !video) return;
+  const mountPermissions = () => {
+    const panel = document.getElementById('jarvis-permissions');
+    if (!panel) return;
+    if (panel.parentElement !== mount) mount.append(panel);
+    document.getElementById('permissions-loading')?.remove();
+  };
+  new MutationObserver(mountPermissions).observe(document.body, {childList:true, subtree:true});
+  mountPermissions();
+  const syncVision = () => {
+    const live = Boolean(screenStream?.getVideoTracks().some(t => t.readyState === 'live'));
+    const stream = live ? screenStream : null;
+    if (video.srcObject !== stream) video.srcObject = stream;
+    video.hidden = !live;
+    document.getElementById('vision-idle').hidden = live;
+    document.getElementById('vision-frame').dataset.live = String(live);
+    document.getElementById('vision-status').textContent = live ? 'LIVE / LOCAL PREVIEW' : 'STANDBY';
+    document.getElementById('vision-source').textContent = live ? 'User-selected browser / screen · local preview' : 'No browser or screen connected';
+    document.getElementById('vision-stop').disabled = !live;
+    if (screenVideo && screenVideo.srcObject !== stream) screenVideo.srcObject = stream;
+  };
+  document.getElementById('vision-share').onclick = async () => {
+    const button = document.getElementById('vision-share');
+    button.disabled = true;
+    try {
+      if (!navigator.mediaDevices?.getDisplayMedia) throw Error('Screen sharing needs a supported desktop browser.');
+      const next = await navigator.mediaDevices.getDisplayMedia({video:{frameRate:5},audio:false});
+      if (screenStream) stopScreen();
+      screenStream = next;
+      next.getVideoTracks()[0].addEventListener('ended', () => { if (screenStream === next) stopScreen(); syncVision(); }, {once:true});
+      document.getElementById('observation-state').textContent = 'SHARING';
+      audit('screen.share','User-selected local preview; frame analysis requires separate approval.');
+      syncVision();
+    } catch (error) { toast(error.name === 'NotAllowedError' ? 'Screen sharing was not granted. Nothing was shared.' : error.message); }
+    finally { button.disabled = false; }
+  };
+  document.getElementById('vision-stop').onclick = () => { stopScreen(); syncVision(); };
+  syncVision();
+  setInterval(syncVision, 500);
+}, {once:true});
+
 const $ = id => document.getElementById(id);
 const node = (tag, text, cls) => { const e=document.createElement(tag); if(text!==undefined)e.textContent=String(text); if(cls)e.className=cls; return e; };
 const KEY='jarvis.mark4.v1';
