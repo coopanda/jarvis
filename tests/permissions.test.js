@@ -13,9 +13,16 @@ function fixture(initial={}) {
   const permissions=createPermissions({files:()=>files,write,onRevoke:async keys=>{revoked.push(...keys);}});
   return {permissions,files,revoked};
 }
-test('all capabilities default OFF, including unknown destinations',()=>{
-  const {permissions:p}=fixture();for(const key of Object.keys(PERMISSIONS)){assert.equal(p.read().toggles[key],false);assert.throws(()=>p.require(key),{status:403});}
+const allOff=()=>Object.fromEntries(Object.keys(PERMISSIONS).map(key=>[key,false]));
+const savedOff=()=>({content:JSON.stringify({schema:1,toggles:allOff()}),version:1});
+test('known capabilities default ON; unknown destinations fail closed',()=>{
+  const {permissions:p}=fixture();for(const key of Object.keys(PERMISSIONS)){assert.equal(p.read().toggles[key],true);p.require(key);}
   assert.throws(()=>p.require('unknown'),{status:403});assert.throws(()=>p.tool('arbitrary.shell'),{status:403});assert.throws(()=>p.route('/api/unmapped'),{status:403});
+});
+test('saved OFF choices persist and missing known keys default ON',()=>{
+  const {permissions:p}=fixture({'memory/permissions.json':{content:JSON.stringify({schema:1,toggles:{ai:false}}),version:1}});
+  assert.equal(p.read().toggles.ai,false);assert.throws(()=>p.require('ai'),{status:403});
+  for(const key of Object.keys(PERMISSIONS).filter(key=>key!=='ai'))assert.equal(p.read().toggles[key],true);
 });
 test('persisted updates, revision conflict, revoke and ephemeral warning',async()=>{
   const f=fixture();const p=f.permissions;assert.equal(p.read().durable,false);assert.match(p.read().warning,/ephemeral/);
@@ -36,14 +43,14 @@ test('generic workspace cannot modify permission settings',async()=>{
   const {permissions:p}=fixture();await p.update({revision:0,toggles:{files:true}});
   for(const operation of ['write','delete'])assert.throws(()=>p.route('/api/workspace',{operation,path:'memory/permissions.json'}),{status:403});
 });
-test('route permissions enforced independently',async()=>{
-  const {permissions:p}=fixture();for(const path of ['/api/mission','/api/vision','/api/research','/api/email/send','/api/browser/run','/api/media/create','/api/content','/api/companion'])assert.throws(()=>p.route(path),{status:403});
-  await p.update({revision:0,toggles:{ai:true}});p.route('/api/mission',{message:'Hello'});assert.throws(()=>p.route('/api/mission',{message:'read calendar'}),{status:403});assert.throws(()=>p.route('/api/vision',{source:'screen'}),{status:403});
+test('route permissions enforced independently after explicit OFF',async()=>{
+  const {permissions:p}=fixture({'memory/permissions.json':savedOff()});for(const path of ['/api/mission','/api/vision','/api/research','/api/email/send','/api/browser/run','/api/media/create','/api/content','/api/companion'])assert.throws(()=>p.route(path),{status:403});
+  await p.update({revision:1,toggles:{ai:true}});p.route('/api/mission',{message:'Hello'});assert.throws(()=>p.route('/api/mission',{message:'read calendar'}),{status:403});assert.throws(()=>p.route('/api/vision',{source:'screen'}),{status:403});
   for(const path of ['/api/session','/api/stop','/api/disconnect','/api/permissions'])p.route(path);
 });
-test('job approvals recover capability from persistent state',async()=>{
-  const {permissions:p}=fixture({'memory/integrations.json':{version:1,content:JSON.stringify({jobs:[{id:'job1',tool:'voice.synthesize'}]})}});
-  assert.throws(()=>p.route('/api/tools',{operation:'approve',id:'job1'}),{status:403});await p.update({revision:0,toggles:{voice:true}});p.route('/api/tools',{operation:'approve',id:'job1'});
+test('job approvals recover capability from persistent OFF state',async()=>{
+  const {permissions:p}=fixture({'memory/permissions.json':savedOff(),'memory/integrations.json':{version:1,content:JSON.stringify({jobs:[{id:'job1',tool:'voice.synthesize'}]})}});
+  assert.throws(()=>p.route('/api/tools',{operation:'approve',id:'job1'}),{status:403});await p.update({revision:1,toggles:{voice:true}});p.route('/api/tools',{operation:'approve',id:'job1'});
   assert.throws(()=>p.route('/api/tools',{operation:'approve',id:'missing'}),{status:403});
 });
 test('tool router retains actual session active Map',async()=>{
