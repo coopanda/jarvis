@@ -21,7 +21,7 @@ function fixture(env = {}, implementation = async () => reply) {
 const providerError = (status, property = 'providerStatus') =>
   Object.assign(new Error('Provider request failed'), { [property]: status });
 
-for (const provider of ['openai', 'claude', 'opus', 'grok', 'gemini', 'openrouter']) {
+for (const failure of ['unreachable', 'timeout', 401, 429, 500]) {   test(`Hermes ${failure} falls back to Free AI without opt-in`, async () => {     const error = typeof failure === 'number' ? providerError(failure) : Object.assign(new Error(failure), { code: failure === 'timeout' ? 'ETIMEDOUT' : 'ECONNREFUSED' });     const { generate, calls } = fixture({ HERMES_API_KEY: 'unit-test-placeholder', OPENAI_API_KEY: 'unit-test-placeholder' }, async provider => {       if (provider === 'hermes') throw error;       return reply;     });     const result = await generate('hermes', 'Hello', undefined, undefined, false);     assert.deepEqual(calls.map(call => call[0]), ['hermes', 'pollinations']);     assert.deepEqual(result.routing, { requested: 'hermes', used: 'pollinations', fallback: true });     assert.equal(result.reply, reply.reply);   }); }  test('configured Hermes succeeds without fallback', async () => {   const { generate, calls } = fixture({ HERMES_API_KEY: 'unit-test-placeholder' });   const result = await generate('hermes', 'Hello');   assert.deepEqual(calls.map(call => call[0]), ['hermes']);   assert.equal(result.routing.fallback, false); });  for (const provider of ['hermes', 'openai', 'claude', 'opus', 'grok', 'gemini', 'openrouter']) {
   test(`missing ${provider} credentials use keyless Pollinations`, async () => {
     const { generate, calls } = fixture();
     const result = await generate(provider, 'Hello');
