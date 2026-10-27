@@ -27,6 +27,33 @@ body.minimal-interface{background:radial-gradient(ellipse at 50% 25%,rgba(var(--
 .conversation-column{display:flex;flex-direction:column}.command-center .command-deck{display:flex;flex-direction:column;flex:1;border:0;background:none;margin:0;padding:20px;min-height:360px}.command-center .messages{flex:1;height:clamp(230px,40dvh,520px);max-height:52dvh;min-height:230px;overscroll-behavior:contain;padding-right:6px}.command-center .message{margin:0 0 18px;border-left:0;padding:12px;border-radius:12px;background:#101c26}.command-center .message.user{margin-left:20px;background:#17201f}.command-center .message p{font-size:13px;line-height:1.65}.command-center .transcript{font-size:11px;line-height:1.5;margin:10px 0;color:#7795a9}.command-center .command-form{gap:7px}.command-center .command-form input{border-radius:11px}.command-center .command-form button{font-size:9px;padding:10px}
 .conversation-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.conversation-actions button{font-size:10px;padding:8px 9px}.conversation-actions small{font-size:8px}.voice-settings{margin-top:14px;color:var(--muted);font-size:11px}.voice-settings summary{cursor:pointer}.command-center .voice-options{gap:10px;font-size:11px}.command-center .voice-options select{width:100%;max-width:100%}
 .connections-panel{border-top:1px solid #1d2a35;margin-top:auto;padding:16px 20px}.command-center #jarvis-permissions{position:static;inset:auto;z-index:auto;max-width:none;width:100%;font-size:12px}.command-center #jarvis-permissions summary{box-shadow:none;padding:12px;font-size:12px}.command-center #jarvis-permissions[open]{box-shadow:none}.command-center #jarvis-permissions section{width:100%;max-width:100%;max-height:42dvh;padding:14px;overscroll-behavior:contain}.command-center #jarvis-permissions input{min-width:0}.command-center #jarvis-permissions p{overflow-wrap:anywhere}
+
+/* Batcomputer: obsidian tactical HUD, cyan bat signal, preserved 3-column grid. */
+body.batcomputer{--bg:#070c13;--panel:#0b141f;--line:#20394a;--accent:#39dfff;--rgb:57,223,255;--gold:#7bc4da;--text:#dfedf5;--muted:#7c9cad;background:radial-gradient(ellipse at 50% 37%,#13304555,transparent 48%),linear-gradient(160deg,#080e16,#04080e);}
+.batcomputer .hud-panel{background:linear-gradient(150deg,#0d1a27e8,#070e17f2);border-color:#254254;box-shadow:inset 0 1px #65dcff17,0 14px 45px #0005;}
+.batcomputer .hud-heading{border-bottom-color:#285069;color:#5fdbfa;}
+.batcomputer .wordmark{color:#b2f4ff;letter-spacing:.16em;text-shadow:0 0 18px #29c9ff66;}
+.batcomputer .wordmark span{display:block;font:9px ui-monospace,monospace;letter-spacing:.13em;color:#76aabd;}
+.batcomputer .reactor-column{position:relative;overflow:hidden;background:linear-gradient(#0a172355,#04091277);border:1px solid #294454;}
+.batcomputer .reactor-column::before{content:'';position:absolute;inset:0;background:linear-gradient(#26789a12 1px,transparent 1px),linear-gradient(90deg,#26789a12 1px,transparent 1px);background-size:32px 32px;pointer-events:none;mask-image:radial-gradient(ellipse,#000,transparent 80%);}
+.batcomputer .reactor-stage{position:relative;width:100%;min-height:360px;}
+.batcomputer .reactor-zone{width:100%;}
+.batcomputer .reactor.bat-emblem,.batcomputer .reactor.bat-emblem:hover{width:min(95%,500px);height:220px;max-width:500px;border:0;border-radius:0;background:none!important;filter:none;animation:none;padding:0;box-shadow:none;}
+.batcomputer .reactor.bat-emblem::before,.batcomputer .reactor.bat-emblem::after{display:none;}
+.batcomputer .bat-symbol{width:100%;height:auto;overflow:visible;filter:drop-shadow(0 0 9px #38dfff99) drop-shadow(0 0 30px #009cd77d);animation:bat-pulse 4s ease-in-out infinite;}
+.batcomputer .bat-grid{inset:8% 2%;z-index:-1;background:radial-gradient(ellipse,#26cfff25,transparent 70%);}
+.batcomputer[data-state=listening] .bat-symbol{animation-duration:1.1s;filter:drop-shadow(0 0 12px #7cf5ff) drop-shadow(0 0 35px #00baff);}
+.batcomputer[data-state=processing] .bat-symbol{animation-duration:1.8s;}
+.batcomputer[data-state=speaking] .bat-symbol{animation-duration:.65s;}
+.batcomputer[data-state=stopped] .bat-symbol{animation:none;opacity:.5;filter:drop-shadow(0 0 4px #169bc955);}
+.batcomputer .reactor-readout{color:#62dff4;text-align:center;}
+.batcomputer .vision-frame{background:linear-gradient(135deg,#07131f,#040a11);border-color:#25506a;}
+.batcomputer .message .speaker{color:#5adff6;}
+.batcomputer .connections-panel #jarvis-permissions{position:static;max-width:100%;}
+@keyframes bat-pulse{0%,100%{opacity:.86;transform:scale(.985)}50%{opacity:1;transform:scale(1.01)}}
+@media(prefers-reduced-motion:reduce){.batcomputer .bat-symbol{animation:none!important;transform:none;}}
+@media(max-width:700px){.batcomputer .reactor.bat-emblem{height:180px}.batcomputer .reactor-stage{min-height:270px}.batcomputer .wordmark{font-size:16px;}}
+
 .command-center .hero.reactor-column{display:flex;flex-direction:column;justify-content:space-between;gap:24px;min-height:600px;padding:0;margin:0;position:relative;border:1px solid #17252f;border-radius:20px;background:radial-gradient(circle at 50% 46%,rgba(var(--rgb),.045),transparent 62%)}
 .reactor-heading{border:0;flex-direction:row;justify-content:space-between;width:100%}.reactor-stage{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:40px 0;min-width:0;width:100%}.command-center .reactor,.command-center .reactor:hover{width:clamp(220px,24vw,350px);height:auto;aspect-ratio:1}.reactor-readout{text-align:center;margin-top:28px;padding:0 20px}.reactor-readout #state-label{font:12px ui-monospace,monospace;letter-spacing:.3em}.reactor-readout p{color:#91a7b7;font-size:12px;line-height:1.6;margin:12px 0 0}.command-center .waveform{margin:6px 0;height:30px}.command-center .core-footer{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;width:100%;margin:0;padding:0 18px 24px}.core-footer button{font-size:10px}
 .command-center[data-state=idle] .reactor{animation:core-idle 5s ease-in-out infinite}.command-center[data-state=listening] .reactor{animation:core-listening 1s ease-in-out infinite}.command-center[data-state=speaking] .reactor{animation:core-speaking .55s ease-in-out infinite}.command-center[data-state=processing] .reactor,.command-center[data-state=surge] .reactor{animation:core-surge 1s ease-in-out infinite}.command-center[data-state=surge] .orbit{animation-duration:1.4s;border-style:dashed}
