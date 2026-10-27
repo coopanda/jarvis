@@ -1,46 +1,46 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#06090d">
-<meta name="description" content="Jarvis command center: live conversation, arc reactor, permissions and browser vision.">
-<title>JARVIS / Personal Intelligence</title>
-<link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080e16">
+<meta name="description" content="Batcomputer tactical command center: voice, mission control, permissions and browser vision.">
+<title>BATCOMPUTER / 'puter</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 190'%3E%3Cpath fill='%233be4ff' d='M10 30H166Q170 70 230 69L236 44L241 69H259L264 44L270 69Q330 70 334 30H490Q399 66 420 123Q313 113 250 178Q187 113 80 123Q101 66 10 30Z'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
 </head>
-<body class="command-center" data-brain="claude" data-state="idle">
-<header class="command-header"><a class="wordmark" href="/" aria-label="Jarvis home">JARVIS<span>PERSONAL INTELLIGENCE</span></a><div class="system-status"><span id="connection"></span><time id="clock"></time><button id="stop" type="button" class="stop-button">STOP ALL</button></div></header>
-<main id="jarvis-interface" aria-label="Jarvis command center">
+<body class="command-center batcomputer" data-brain="claude" data-state="idle">
+<header class="command-header"><a class="wordmark" href="/" aria-label="Batcomputer home">BATCOMPUTER <span>WAYNE TACTICAL SYSTEMS / 'PUTER</span></a><div class="system-status"><span id="connection"></span><time id="clock"></time><button id="stop" type="button" class="stop-button">STOP ALL</button></div></header>
+<main id="jarvis-interface" aria-label="Batcomputer command center">
 <aside class="conversation-column hud-panel" aria-label="Conversation and connections">
-<header class="hud-heading"><span class="hud-kicker">01 / COMMS</span><h1>Conversation</h1><span id="mission-status" class="hud-status">STANDING BY</span></header>
+<header class="hud-heading"><span class="hud-kicker">01 / COMMS</span><h1>Mission comms</h1><span id="mission-status" class="hud-status">STANDING BY</span></header>
 <section class="command-deck" aria-label="Live chat and voice interaction">
 <div id="messages" class="messages" role="log" aria-live="polite" aria-label="Conversation"></div>
-<div id="transcript" class="transcript" aria-live="polite">Tap the reactor to speak, or type a message.</div>
-<form id="command-form" class="command-form"><label class="sr-only" for="command">Message Jarvis</label><input id="command" maxlength="4000" required autocomplete="off" placeholder="Message Jarvis…" enterkeyhint="send"><button type="submit" aria-label="Send message">SEND</button></form>
+<div id="transcript" class="transcript" aria-live="polite">Tap the Bat-emblem to speak, or say "'puter" in hands-free mode.</div>
+<form id="command-form" class="command-form"><label class="sr-only" for="command">Message Batcomputer</label><input id="command" maxlength="4000" required autocomplete="off" placeholder="Message 'puter…" enterkeyhint="send"><button type="submit" aria-label="Send message">SEND</button></form>
 <div class="conversation-actions"><button id="mic" type="button" aria-pressed="false">Microphone</button><button id="ear" type="button" aria-label="Toggle hands-free listening" aria-pressed="false"><span>◖))</span><small>HANDS-FREE</small></button><button id="interrupt" type="button">Interrupt</button></div>
-<details class="voice-settings"><summary>Voice settings</summary><div class="voice-options"><label><input type="checkbox" id="speak" checked> Spoken replies</label><label for="voice">Reply voice</label><select id="voice"><option value="">British voice preferred</option></select><span id="privacy-note"></span></div></details>
+<details class="voice-settings"><summary>Voice settings</summary><div class="voice-options"><label><input type="checkbox" id="speak" checked> Spoken replies</label><label for="voice">Reply voice</label><select id="voice"><option value="">Tactical voice preferred</option></select><span id="privacy-note"></span></div></details>
 </section>
 <section id="permissions-mount" class="connections-panel" aria-label="Permissions and connections"><p id="permissions-loading" class="muted">Loading permissions &amp; connections…</p></section>
 </aside>
-<section class="hero reactor-column" aria-label="Arc reactor">
-<header class="hud-heading reactor-heading"><span class="hud-kicker">02 / CORE</span><span id="brain-label" class="hud-status"></span></header>
-<div class="reactor-stage"><div class="reactor-zone"><button id="reactor" class="reactor" aria-label="Tap to speak to Jarvis" title="Tap to speak; tap again to stop listening"><span class="orbit"></span><span class="ring ring-a"></span><span class="ring ring-b"></span><span class="ring ring-c"></span><span class="spokes"></span><span class="core"><span></span></span></button></div><div class="reactor-readout" aria-live="polite"><span id="state-label">IDLE</span><p id="reactor-caption">Tap the reactor to speak</p></div><div id="waveform" class="waveform" aria-hidden="true"></div><span id="voice-status" class="hud-status"></span></div>
-<footer class="core-footer"><span class="hud-kicker">VOICE FIRST · HUMAN CONTROLLED</span><button type="button" data-tool="brains" aria-label="Choose AI brain, including Free AI and Hermes Agent" title="Choose a brain: Hermes Agent uses your configured gateway and falls back to Free AI">Brain &amp; tools · Free AI</button></footer>
+<section class="hero reactor-column" aria-label="Glowing cyan Bat-emblem">
+<header class="hud-heading reactor-heading"><span class="hud-kicker">02 / BATCAVE CORE</span><span id="brain-label" class="hud-status"></span></header>
+<div class="reactor-stage"><div class="reactor-zone"><button id="reactor" class="reactor bat-emblem" aria-label="Tap to speak to Batcomputer" title="Tap to speak; tap again to stop listening"><svg class="bat-symbol" viewBox="0 0 500 190" role="img" aria-label="Cyan Bat-emblem"><defs><linearGradient id="bat-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#64eeff"/><stop offset="0.55" stop-color="#21bfdc"/><stop offset="1" stop-color="#08758f"/></linearGradient></defs><path fill="url(#bat-fill)" stroke="#8ef4ff" stroke-width="2" d="M10 30H166Q170 70 230 69L236 44L241 69H259L264 44L270 69Q330 70 334 30H490Q399 66 420 123Q313 113 250 178Q187 113 80 123Q101 66 10 30Z"/></svg><span class="bat-grid" aria-hidden="true"></span></button></div><div class="reactor-readout" aria-live="polite"><span id="state-label">IDLE</span><p id="reactor-caption">Tap the Bat-emblem to speak</p></div><div id="waveform" class="waveform" aria-hidden="true"></div><span id="voice-status" class="hud-status"></span></div>
+<footer class="core-footer"><span class="hud-kicker">BATMAN / MISSION CONTROL</span><button type="button" data-tool="brains" aria-label="Choose AI brain, including Free AI and Hermes Agent" title="Choose a brain: Hermes Agent uses your configured gateway and falls back to Free AI">Brain &amp; tools · Free AI</button></footer>
 </section>
 <aside class="vision-column hud-panel" aria-label="Live browser vision">
-<header class="hud-heading"><span class="hud-kicker">03 / VISION</span><h2>JARVIS VISION</h2><span id="vision-status" class="hud-status" role="status">STANDBY</span></header>
+<header class="hud-heading"><span class="hud-kicker">03 / RECON</span><h2>BATCOMPUTER VISION</h2><span id="vision-status" class="hud-status" role="status">STANDBY</span></header>
 <div class="vision-address"><span class="live-dot" aria-hidden="true"></span><span id="vision-source">No browser or screen connected</span></div>
-<div id="vision-frame" class="vision-frame" data-live="false"><video id="vision-video" autoplay muted playsinline hidden aria-label="Live preview of your selected browser or screen"></video><div id="vision-idle" class="vision-idle"><div class="vision-reticle" aria-hidden="true"></div><strong>JARVIS VISION · LIVE BROWSER FEED</strong><p>A clear window into what is being viewed.</p><span>Share a browser tab or window to start a real live preview.</span></div><span class="vision-frame-label" aria-hidden="true">VIEWPORT / LIVE SIGNAL</span></div>
+<div id="vision-frame" class="vision-frame" data-live="false"><video id="vision-video" autoplay muted playsinline hidden aria-label="Live preview of your selected browser or screen"></video><div id="vision-idle" class="vision-idle"><div class="vision-reticle" aria-hidden="true"></div><strong>BATCOMPUTER VISION · LIVE BROWSER FEED</strong><p>A clear window into what is being viewed.</p><span>Share a browser tab or window to start a real live preview.</span></div><span class="vision-frame-label" aria-hidden="true">VIEWPORT / LIVE SIGNAL</span></div>
 <div class="vision-actions"><button id="vision-share" type="button">Share browser / screen</button><button id="vision-stop" type="button" disabled>Disconnect feed</button><button type="button" data-tool="screen">Analyze a frame</button><button type="button" data-tool="files">Browser runner</button></div>
-<p class="vision-disclosure">Only your explicitly selected screen is shown. Preview stays on this device; analysis sends one frame only with approval. Remote runner video is not connected.</p>
+<p class="vision-disclosure">Only your explicitly selected screen is shown. Preview stays on this device; analysis sends one frame only when you request it.</p>
 </aside>
 </main>
-<!-- Preserve legacy workspace hooks, without exposing hidden controls to focus. -->
-<div id="internal-tools" hidden inert aria-hidden="true">
-<div id="engine"></div><strong id="active-count"></strong><strong id="memory-count"></strong><strong id="observation-state"></strong><span id="timezone"></span>
-<section class="workspace"><section class="panel"><div id="missions" class="missions"></div></section><section class="panel"><span id="memory-mode"></span><form id="record-form"><select id="record-type"><option>preference</option><option>project</option><option>contact</option><option>decision</option><option>task</option><option>fact</option></select><input id="record-title" required maxlength="160"><textarea id="record-detail" maxlength="4000"></textarea><button type="submit">Save memory</button></form><input id="memory-search"><div id="records" class="records"></div><button id="export-memory">Export</button><input type="file" id="import-memory" accept=".json,.txt,.md"><button id="clear-memory">Clear</button></section></section>
-<section class="audit-panel"><div id="audit" class="audit"></div></section>
-<nav class="tool-dock"><button data-tool="calendar">Calendar</button><button data-tool="email">Email</button><button data-tool="calls">Calls</button><button data-tool="documents">Create</button><button data-tool="business">Business</button><button data-tool="registry">Tools</button></nav>
-</div>
-<dialog id="tool-dialog"><header><h2 id="tool-title"></h2><button id="close-tool" aria-label="Close panel">✕</button></header><div id="tool-content"></div></dialog>
+<!-- Preserve existing workspace and voice DOM hooks. -->
+<div id="internal-tools" hidden inert aria-hidden="true"><div id="engine"></div><strong id="active-count"></strong><strong id="memory-count"></strong><strong id="observation-state"></strong><span id="timezone"></span><section class="workspace"><section class="panel"><div id="missions" class="missions"></div></section><section class="panel"><span id="memory-mode"></span><form id="record-form"><select id="record-type"><option>preference</option><option>project</option><option>contact</option><option>decision</option><option>task</option><option>fact</option></select><input id="record-title" required maxlength="160"><textarea id="record-detail" maxlength="4000"></textarea><button type="submit">Save memory</button></form><input id="memory-search"><div id="records" class="records"></div><button id="export-memory">Export</button><input type="file" id="import-memory" accept=".json,.txt,.md"><button id="clear-memory">Clear</button></section></section><section class="audit-panel"><div id="audit" class="audit"></div></section><nav class="tool-dock"><button data-tool="calendar">Calendar</button><button data-tool="email">Email</button><button data-tool="calls">Calls</button><button data-tool="documents">Create</button><button data-tool="business">Business</button><button data-tool="registry">Tools</button></nav></div>
+<dialog id="tool-dialog"><header><h2 id="tool-title"></h2><button id="close-tool" aria-label="Close panel">×</button></header><div id="tool-content"></div></dialog>
 <dialog id="confirm-dialog"><h2 id="confirm-title">Confirm action</h2><p id="confirm-detail"></p><div class="local-actions"><button id="confirm-no">Cancel</button><button id="confirm-yes" class="primary">Approve</button></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
-</body></html>
+</body>
+</html>
