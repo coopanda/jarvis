@@ -8,14 +8,13 @@ const silent = () => {};
 const never = () => new Promise(() => {});
 const rejected = (status, retry = null) => ({ ok: false, status, headers: { get: name => name === 'retry-after' ? retry : null } });
 const fresh = () => createFreeBrain({ env: {} });
-
 function clockFixture(env = {}) {
   let time = Date.parse('2026-10-26T00:00:00Z');
   return { generate: createFreeBrain({ env, now: () => time }), advance: ms => { time += ms; }, now: () => time };
 }
 
-test('documented keyless POST, explicit model, private context and no credentials', async () => {
-  const result = await fresh()({ prompt: 'private prompt', log: silent, fetchImpl: async (url, opts) => {
+ test('keyless POST keeps full context private and uses short explicit generation limit', async () => {
+  const result = await fresh()({ prompt: 'private prompt', system: 'full policy', log: silent, fetchImpl: async (url, opts) => {
     assert.equal(url, 'https://text.pollinations.ai/openai');
     assert.equal(opts.method, 'POST');
     assert.equal(opts.redirect, 'error');
@@ -23,201 +22,169 @@ test('documented keyless POST, explicit model, private context and no credential
     const body = JSON.parse(opts.body);
     assert.equal(body.model, 'openai-fast');
     assert.equal(body.stream, false);
-    assert.equal(body.max_tokens, 768);
-    assert.equal(body.messages[1].content, 'private prompt');
+    assert.equal(body.max_tokens, 384);
+    assert.deepEqual(body.messages, [{ role: 'system', content: 'full policy' }, { role: 'user', content: 'private prompt' }]);
     return ok;
-  } });
+  }});
   assert.equal(result.reply, 'OK');
 });
 
-test('primary timeout attempts plain-text POST fallback with fresh signal', async () => {
-  const calls = [], logs = [];
-  const start = performance.now();
-  const result = await fresh()({ prompt: 'SECRET_PROMPT', timeoutMs: 200, attemptMs: 35, log: s => logs.push(JSON.parse(s)), fetchImpl: async (url, opts) => {
-    calls.push({ url, signal: opts.signal });
-    return calls.length === 1 ? never() : ok;
-  } });
-  assert.equal(result.reply, 'OK');
-  assert.deepEqual(calls.map(c => c.url), ['https://text.pollinations.ai/openai', 'https://text.pollinations.ai/']);
-  assert.equal(calls[0].signal.aborted, true);
-  assert.notEqual(calls[0].signal, calls[1].signal);
-  assert.equal(logs[0].status, 504);
-  assert.equal(logs[1].status, 'ok');
-  assert.ok(logs.every(l => Number.isFinite(l.elapsedMs) && Number.isFinite(l.totalMs)));
-  assert.ok(!JSON.stringify(logs).includes('SECRET_PROMPT'));
-  assert.ok(performance.now() - start < 1000);
-});
-
-test('total deadline includes headers and response body reading', async () => {
-  const start = performance.now();
-  await assert.rejects(fresh()({ prompt: 'hi', timeoutMs: 100, attemptMs: 30, log: silent, fetchImpl: async () => ({ ok: true, json: never, text: never }) }), { status: 504 });
-  assert.ok(performance.now() - start < 1000);
-});
-
-test('HTTP errors try alternate POST but never exceed total budget', async () => {
-  let calls = 0;
-  await assert.rejects(fresh()({ prompt: 'hi', log: silent, fetchImpl: async () => { calls++; return rejected(500); } }), { providerStatus: 500 });
-  assert.equal(calls, 2);
-});
-
-test('caller abort immediately cancels without fallback', async () => {
-  const controller = new AbortController();
-  const reason = new Error('cancelled by caller');
-  let calls = 0;
-  const promise = fresh()({ prompt: 'hi', signal: controller.signal, log: silent, fetchImpl: async () => { calls++; return never(); } });
-  controller.abort(reason);
-  await assert.rejects(promise, actual => actual === reason);
-  assert.equal(calls, 1);
-});
-
-test('already aborted and text-only guard do not contact providers', async () => {
-  const controller = new AbortController();
-  controller.abort();
-  const fetchImpl = async () => { throw Error('unexpected network'); };
-  await assert.rejects(fresh()({ prompt: 'hi', signal: controller.signal, fetchImpl, log: silent }), { name: 'AbortError' });
-  await assert.rejects(fresh()({ prompt: 'hi', image: 'data:image/jpeg;base64,test', fetchImpl, log: silent }), /text-only/);
-});
-
-test('empty and HTML responses remain rejected', async () => {
-  for (const content of ['', '<!doctype html><html>error</html>', '{"reply":""}']) {
-    await assert.rejects(fresh()({ prompt: 'hi', log: silent, fetchImpl: async () => ({ ok: true, json: async () => ({ choices: [{ message: { content } }] }), text: async () => content }) }), { status: 502 });
+test('local greetings are instant and do not consume provider quota', async () => {
+  for (const prompt of ['hey Jarvis', 'hi', 'Hello, Jarvis!', 'Jarvis']) {
+    const result = await fresh()({ prompt, fetchImpl: () => { throw new Error('must not fetch'); } });
+    assert.match(result.reply, /Hey!/);
+    assert.equal(result.tool, null);
+    assert.equal(result.unavailable, undefined);
   }
 });
 
-test('Retry-After accepts seconds and HTTP dates without shortening long limits', () => {
-  const now = Date.parse('2026-10-26T00:00:00Z');
-  assert.equal(retryAfterMs('120', now), 120000);
-  assert.equal(retryAfterMs('900', now), 900000);
-  assert.equal(retryAfterMs('Mon, 26 Oct 2026 00:02:00 GMT', now), 120000);
-  assert.equal(retryAfterMs(null, now), 60000);
-  assert.equal(retryAfterMs('', now), 60000);
-  assert.equal(retryAfterMs('invalid', now), 60000);
-  assert.equal(retryAfterMs('0', now), 1000);
-});
-
-for (const status of [402, 429]) {
-  test(`${status} returns friendly text, skips same-host retry and honors cooldown`, async () => {
-    const f = clockFixture();
-    const calls = [];
-    const request = () => f.generate({ prompt: 'hi', log: silent, fetchImpl: async url => { calls.push(url); return rejected(status, '120'); } });
-    const first = await request();
-    assert.equal(first.unavailable, true);
-    assert.equal(first.tool, null);
-    assert.equal(first.retryAfterSeconds, 120);
-    assert.match(first.reply, /temporarily busy/);
-    assert.ok(!first.reply.includes(String(status)));
-    f.advance(119000);
-    assert.equal((await request()).retryAfterSeconds, 1);
-    assert.equal(calls.length, 1);
-    f.advance(1000);
-    await request();
-    assert.equal(calls.length, 2);
-    assert.ok(calls.every(url => url === 'https://text.pollinations.ai/openai'));
-  });
-
-  test(`${status} uses distinct Groq free-tier fallback without leaking key or context`, async () => {
-    const key = 'unit-test-placeholder';
-    const f = clockFixture({ GROQ_API_KEY: key });
-    const calls = [], logs = [];
-    const request = () => f.generate({ prompt: 'PRIVATE_PROMPT', log: line => logs.push(JSON.parse(line)), fetchImpl: async (url, opts) => {
-      calls.push(url);
-      if (url.startsWith('https://text.pollinations.ai')) {
-        assert.equal(opts.headers.Authorization, undefined);
-        return rejected(status, '120');
-      }
-      assert.equal(url, 'https://api.groq.com/openai/v1/chat/completions');
-      assert.equal(opts.headers.Authorization, `Bearer ${key}`);
-      assert.equal(JSON.parse(opts.body).model, 'llama-3.1-8b-instant');
-      return ok;
-    } });
-    assert.equal((await request()).reply, 'OK');
-    assert.equal((await request()).reply, 'OK');
-    assert.deepEqual(calls, ['https://text.pollinations.ai/openai', 'https://api.groq.com/openai/v1/chat/completions', 'https://api.groq.com/openai/v1/chat/completions']);
-    assert.ok(!JSON.stringify(logs).includes(key));
-    assert.ok(!JSON.stringify(logs).includes('PRIVATE_PROMPT'));
-    assert.equal(logs[1].provider, 'groq');
-  });
-}
-
-test('HTTP-date Retry-After is honored at the actual request boundary', async () => {
-  const f = clockFixture();
-  let calls = 0;
-  const request = () => f.generate({ prompt: 'hi', log: silent, fetchImpl: async () => { calls++; return rejected(402, 'Mon, 26 Oct 2026 00:02:00 GMT'); } });
-  assert.equal((await request()).retryAfterSeconds, 120);
-  f.advance(60000);
-  assert.equal((await request()).retryAfterSeconds, 60);
-  assert.equal(calls, 1);
-  f.advance(60000);
-  await request();
-  assert.equal(calls, 2);
-});
-
-test('missing Retry-After gets a safe default cooldown', async () => {
-  const f = clockFixture();
-  let calls = 0;
-  const request = () => f.generate({ prompt: 'hi', log: silent, fetchImpl: async () => { calls++; return rejected(402); } });
-  assert.equal((await request()).retryAfterSeconds, 60);
-  await request();
-  assert.equal(calls, 1);
-});
-
-test('success also enforces 30-second anonymous spacing', async () => {
-  const f = clockFixture();
-  let calls = 0;
-  const request = () => f.generate({ prompt: 'hi', log: silent, fetchImpl: async () => { calls++; return ok; } });
-  assert.equal((await request()).reply, 'OK');
-  assert.equal((await request()).retryAfterSeconds, 30);
-  f.advance(29999);
-  await request();
-  assert.equal(calls, 1);
-  f.advance(1);
-  assert.equal((await request()).reply, 'OK');
-  assert.equal(calls, 2);
-});
-
-test('both providers rate limited produce friendly text and preserve separate cooldowns', async () => {
-  const f = clockFixture({ GROQ_API_KEY: 'unit-test-placeholder' });
-  const calls = [];
-  const request = () => f.generate({ prompt: 'hi', log: silent, fetchImpl: async url => { calls.push(url); return rejected(url.includes('groq') ? 429 : 402, url.includes('groq') ? '60' : '120'); } });
-  assert.equal((await request()).retryAfterSeconds, 60);
-  assert.equal((await request()).unavailable, true);
-  assert.equal(calls.length, 2);
-  f.advance(60000);
-  await request();
-  assert.equal(calls.length, 3);
-  assert.ok(calls[2].includes('groq'));
-});
-
-test('concurrent requests do not start two anonymous calls', async () => {
-  const f = clockFixture();
-  let release, calls = 0;
-  const pending = new Promise(resolve => { release = resolve; });
-  const request = () => f.generate({ prompt: 'hi', log: silent, fetchImpl: async () => { calls++; return pending; } });
-  const first = request();
-  assert.equal((await request()).unavailable, true);
-  assert.equal(calls, 1);
-  release(ok);
-  assert.equal((await first).reply, 'OK');
-});
-
-test('Groq is independent after a network failure and supports an env model override', async () => {
-  const generate = createFreeBrain({ env: { GROQ_API_KEY: 'unit-test-placeholder', GROQ_FREE_MODEL: 'llama-3.3-70b-versatile' } });
-  let calls = 0;
-  const result = await generate({ prompt: 'hi', log: silent, fetchImpl: async (url, opts) => {
-    calls++;
-    if (!url.includes('groq')) throw Error('network failed');
-    assert.equal(JSON.parse(opts.body).model, 'llama-3.3-70b-versatile');
-    return ok;
-  } });
+test('primary timeout tries text POST fallback with a fresh signal', async () => {
+  const calls = [], logs = [];
+  const start = performance.now();
+  const result = await fresh()({ prompt: 'SECRET_PROMPT', timeoutMs: 300, attemptMs: 30, log: line => logs.push(line), fetchImpl: async (url, opts) => {
+    calls.push({ url, signal: opts.signal });
+    return calls.length === 1 ? never() : ok;
+  }});
   assert.equal(result.reply, 'OK');
-  assert.equal(calls, 2);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].url, 'https://text.pollinations.ai/');
+  assert.notEqual(calls[0].signal, calls[1].signal);
+  assert.ok(calls[0].signal.aborted);
+  assert.ok(performance.now() - start < 1000);
+  assert.ok(!logs.join('').includes('SECRET_PROMPT'));
 });
 
-test('402 is a fallback-triggering error; permission denial and abort are not', () => {
-  assert.equal(isFreeFallbackError({ providerStatus: 402 }), true);
-  assert.equal(isFreeFallbackError({ status: 402 }), true);
-  assert.equal(isFreeFallbackError(new Error('Provider request rejected (402)')), true);
-  assert.equal(isFreeFallbackError({ providerStatus: 429 }), true);
+test('total deadline and hung body reads return graceful replies, not timeout errors', async () => {
+  for (const fetchImpl of [never, async () => ({ ok: true, json: never })]) {
+    const result = await fresh()({ prompt: 'question', timeoutMs: 40, attemptMs: 100, fetchImpl, log: silent });
+    assert.equal(result.unavailable, true);
+    assert.equal(result.tool, null);
+    assert.ok(result.retryAfterSeconds > 0);
+    assert.doesNotMatch(result.reply, /timed out|endpoint rejected|402/i);
+  }
+});
+
+test('HTTP failures, invalid responses, and network failures gracefully exhaust', async () => {
+  for (const fetchImpl of [async () => rejected(500), async () => { throw new Error('SECRET_UPSTREAM'); }, async () => ({ ok: true, json: async () => ({}) }), async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: '<html>bad</html>' } }] }), text: async () => '' })]) {
+    const logs = [];
+    const result = await fresh()({ prompt: 'question', fetchImpl, log: line => logs.push(line) });
+    assert.equal(result.unavailable, true);
+    assert.doesNotMatch(result.reply + logs.join(''), /SECRET_UPSTREAM/);
+  }
+});
+
+test('402 and 429 honor host-wide Retry-After without trying another path', async () => {
+  for (const status of [402, 429]) {
+    const f = clockFixture();
+    let count = 0;
+    const options = { prompt: 'question', log: silent, fetchImpl: async () => { count++; return rejected(status, '120'); } };
+    const result = await f.generate(options);
+    assert.equal(result.unavailable, true);
+    assert.equal(result.retryAfterSeconds, 120);
+    assert.equal(count, 1);
+    f.advance(119000);
+    await f.generate(options);
+    assert.equal(count, 1);
+    f.advance(1000);
+    await f.generate(options);
+    assert.equal(count, 2);
+  }
+});
+
+test('Retry-After handles seconds, HTTP date, invalid input, and long cooldowns', () => {
+  const time = Date.parse('2026-10-26T00:00:00Z');
+  assert.equal(retryAfterMs('120', time), 120000);
+  assert.equal(retryAfterMs('Mon, 26 Oct 2026 00:02:00 GMT', time), 120000);
+  assert.equal(retryAfterMs('86400', time), 86400000);
+  assert.equal(retryAfterMs('0', time), 1000);
+  assert.equal(retryAfterMs('bad', time), 60000);
+  assert.equal(retryAfterMs(null, time), 60000);
+});
+
+test('configured Groq is primary and never sends its key to Pollinations or logs', async () => {
+  const f = createFreeBrain({ env: { GROQ_API_KEY: 'TEST_ONLY_KEY', GROQ_FREE_MODEL: 'fast-test' } });
+  let calls = 0;
+  const logs = [];
+  const result = await f({ prompt: 'question', log: line => logs.push(line), fetchImpl: async (url, opts) => {
+    calls++;
+    assert.equal(url, 'https://api.groq.com/openai/v1/chat/completions');
+    assert.equal(opts.headers.Authorization, 'Bearer TEST_ONLY_KEY');
+    assert.equal(JSON.parse(opts.body).model, 'fast-test');
+    return ok;
+  }});
+  assert.equal(result.reply, 'OK');
+  assert.equal(calls, 1);
+  assert.ok(!logs.join('').includes('TEST_ONLY_KEY'));
+});
+
+test('primary 402 immediately falls back to an independent host and retains cooldown', async () => {
+  const f = clockFixture({ GROQ_API_KEY: 'TEST_ONLY_KEY' });
+  const calls = [];
+  const fetchImpl = async (url, opts) => {
+    calls.push(url);
+    if (url.includes('groq.com')) return rejected(402, '120');
+    assert.equal(opts.headers.Authorization, undefined);
+    return ok;
+  };
+  const result = await f.generate({ prompt: 'question', fetchImpl, hedgeMs: 4000, log: silent });
+  assert.equal(result.reply, 'OK');
+  assert.equal(calls.length, 2);
+  f.advance(31000);
+  await f.generate({ prompt: 'question', fetchImpl, log: silent });
+  assert.equal(calls.filter(url => url.includes('groq.com')).length, 1);
+});
+
+test('slow primary is hedged; fast Cerebras wins and the loser is cancelled', async () => {
+  const f = createFreeBrain({ env: { GROQ_API_KEY: 'TEST_GROQ', CEREBRAS_API_KEY: 'TEST_CEREBRAS', CEREBRAS_FREE_MODEL: 'fast-test' } });
+  const calls = [];
+  let losingSignal;
+  const start = performance.now();
+  const result = await f({ prompt: 'question', timeoutMs: 500, attemptMs: 400, hedgeMs: 20, log: silent, fetchImpl: async (url, opts) => {
+    calls.push(url);
+    if (url.includes('groq.com')) { losingSignal = opts.signal; return never(); }
+    assert.equal(url, 'https://api.cerebras.ai/v1/chat/completions');
+    assert.equal(opts.headers.Authorization, 'Bearer TEST_CEREBRAS');
+    return ok;
+  }});
+  assert.equal(result.reply, 'OK');
+  assert.equal(calls.length, 2);
+  assert.ok(losingSignal.aborted);
+  assert.ok(performance.now() - start < 350);
+});
+
+test('successful anonymous requests and concurrent calls respect host cooldown/occupancy', async () => {
+  const f = clockFixture();
+  let count = 0;
+  const options = { prompt: 'question', fetchImpl: async () => { count++; return ok; }, log: silent };
+  await f.generate(options);
+  const waiting = await f.generate(options);
+  assert.equal(waiting.unavailable, true);
+  assert.equal(count, 1);
+  f.advance(30000);
+  await f.generate(options);
+  assert.equal(count, 2);
+  const g = fresh();
+  const pending = g({ prompt: 'question', fetchImpl: never, timeoutMs: 30, log: silent });
+  const concurrent = await g({ prompt: 'question', fetchImpl: () => { throw new Error('must not fetch'); }, log: silent });
+  assert.equal(concurrent.unavailable, true);
+  await pending;
+});
+
+test('caller cancellation is preserved and vision is not silently downgraded', async () => {
+  const controller = new AbortController();
+  const reason = new DOMException('Cancelled', 'AbortError');
+  controller.abort(reason);
+  await assert.rejects(fresh()({ prompt: 'question', signal: controller.signal, fetchImpl: never }), e => e === reason);
+  const runningController = new AbortController();
+  const promise = fresh()({ prompt: 'question', signal: runningController.signal, fetchImpl: never, log: silent });
+  runningController.abort(reason);
+  await assert.rejects(promise, e => e === reason);
+  await assert.rejects(fresh()({ prompt: 'question', image: 'image' }), /text-only/);
+});
+
+test('fallback eligibility includes billing, quotas, unconfigured providers and deadlines', () => {
+  for (const status of [401, 402, 429, 503, 504]) assert.ok(isFreeFallbackError({ providerStatus: status }));
+  assert.ok(isFreeFallbackError({ message: 'Provider not configured' }));
+  assert.equal(isFreeFallbackError({ name: 'AbortError', status: 504 }), false);
   assert.equal(isFreeFallbackError({ status: 403 }), false);
-  assert.equal(isFreeFallbackError({ name: 'AbortError', providerStatus: 402 }), false);
 });
