@@ -1,8 +1,8 @@
 /* Server-only Groq transport. Log schema metadata/status, never credentials or prompt contents. */
 export const GROQ_CHAT_URL='https://api.groq.com/openai/v1/chat/completions';
 export const GROQ_MODELS_URL='https://api.groq.com/openai/v1/models';
-export const GROQ_DEFAULT_MODEL='llama-3.1-8b-instant';
-const alternatives=['llama-3.3-70b-versatile','openai/gpt-oss-20b','openai/gpt-oss-120b'];
+export const GROQ_DEFAULT_MODEL='llama-3.3-70b-versatile';
+const alternatives=['llama-3.1-8b-instant'];
 const supported=new Set([GROQ_DEFAULT_MODEL,...alternatives]);
 const safeCodes=new Set(['model_not_found','model_decommissioned','invalid_api_key','rate_limit_exceeded','insufficient_quota','invalid_request_error']);
 export function createGroqClient({key,model=GROQ_DEFAULT_MODEL,fetchImpl=globalThis.fetch,log=()=>{}}={}){
@@ -48,7 +48,7 @@ export function createGroqClient({key,model=GROQ_DEFAULT_MODEL,fetchImpl=globalT
     let data;
     try{data=await send();}
     catch(error){
-      if(error.providerStatus===400){active=GROQ_DEFAULT_MODEL;log({event:'groq_minimal_payload_retry',model:active});data=await send(true);}
+      if(error.providerStatus===400&&!['model_decommissioned','model_not_found'].includes(error.providerCode)){log({event:'groq_minimal_payload_retry',model:active});try{data=await send(true);}catch(retryError){if(retryError.providerStatus===404||['model_decommissioned','model_not_found'].includes(retryError.providerCode)){await discover(active);data=await send(true);}else throw retryError;}}
       else if(error.providerStatus===404||['model_decommissioned','model_not_found'].includes(error.providerCode)){await discover(active);data=await send(true);}
       else throw error;
     }
